@@ -38,7 +38,14 @@ public class AuthenticationFilter implements Filter {
             "/api/accounts/all",
             "/api/accounts/update",
             "/api/accounts/delete",
-            "/api/accounts/deactivate"
+            "/api/accounts/deactivate",
+            "/api/employees/",
+            "/api/revenue/"
+    );
+
+    // Admin and Employee API endpoints
+    private static final List<String> ADMIN_EMPLOYEE_API_ENDPOINTS = Arrays.asList(
+            "/api/customers/"
     );
 
     // Admin-only JSP pages
@@ -46,6 +53,14 @@ public class AuthenticationFilter implements Filter {
             "/accounts.jsp",
             "/employees.jsp",
             "/reports.jsp"
+    );
+
+    // Admin and Employee JSP pages
+    private static final List<String> ADMIN_EMPLOYEE_JSP_PAGES = Arrays.asList(
+            "/customers.jsp",
+            "/pawn-contracts.jsp",
+            "/products.jsp",
+            "/liquidations.jsp"
     );
 
     @Override
@@ -119,6 +134,18 @@ public class AuthenticationFilter implements Filter {
             return;
         }
 
+        // Check admin/employee access
+        if ((isAdminEmployeeApiEndpoint(path) || isAdminEmployeeJspPage(path)) &&
+                account.getRole() != Account.Role.ADMIN && account.getRole() != Account.Role.EMPLOYEE) {
+            if (isApiRequest) {
+                sendForbiddenResponse(httpResponse, "Admin or Employee access required");
+            } else {
+                httpResponse.sendRedirect(httpRequest.getContextPath() +
+                        "/dashboard.jsp?error=Access denied - Employee privileges required");
+            }
+            return;
+        }
+
         // Set account in request attribute for downstream use
         httpRequest.setAttribute("currentAccount", account);
 
@@ -140,6 +167,14 @@ public class AuthenticationFilter implements Filter {
 
     private boolean isAdminJspPage(String path) {
         return ADMIN_JSP_PAGES.stream().anyMatch(path::equals);
+    }
+
+    private boolean isAdminEmployeeApiEndpoint(String path) {
+        return ADMIN_EMPLOYEE_API_ENDPOINTS.stream().anyMatch(path::startsWith);
+    }
+
+    private boolean isAdminEmployeeJspPage(String path) {
+        return ADMIN_EMPLOYEE_JSP_PAGES.stream().anyMatch(path::equals);
     }
 
     private void sendUnauthorizedResponse(HttpServletResponse response, String message)
